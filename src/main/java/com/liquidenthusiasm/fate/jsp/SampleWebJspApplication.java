@@ -16,10 +16,14 @@
 
 package com.liquidenthusiasm.fate.jsp;
 
+import com.orientechnologies.orient.core.metadata.security.ORole;
+import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.web.SpringBootServletInitializer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
@@ -27,6 +31,11 @@ import org.springframework.context.annotation.Configuration;
 @EnableAutoConfiguration
 @ComponentScan
 public class SampleWebJspApplication extends SpringBootServletInitializer {
+    @Value("${db.location}")
+    private String dbLocation;
+    @Value("${spring.view.suffix}")
+    private String springViewSuffix;
+
     // mvn verify spring-boot:run
     public static void main(String[] args) throws Exception {
         SpringApplication.run(SampleWebJspApplication.class, args);
@@ -35,6 +44,22 @@ public class SampleWebJspApplication extends SpringBootServletInitializer {
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
         return application.sources(SampleWebJspApplication.class);
+    }
+
+    @Bean
+//    @Scope(value="request", proxyMode = ScopedProxyMode.TARGET_CLASS)
+    public OObjectDatabaseTx orientServer() throws Exception {
+        OObjectDatabaseTx db = new OObjectDatabaseTx(dbLocation);
+        if (!db.exists()) {
+            db.create();
+            db.getMetadata().getSecurity().createUser("khobbs", "admin", ORole.ADMIN);
+            db.getMetadata().getSecurity().authenticate("khobbs", "admin");
+            db.setAutomaticSchemaGeneration(true);
+        } else {
+            db.open("khobbs", "admin");
+        }
+        db.getEntityManager().registerEntityClasses("com.liquidenthusiasm.fate.domain");
+        return db;
     }
 
 }

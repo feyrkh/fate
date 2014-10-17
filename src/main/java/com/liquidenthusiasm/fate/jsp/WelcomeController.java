@@ -16,23 +16,54 @@
 
 package com.liquidenthusiasm.fate.jsp;
 
+import com.liquidenthusiasm.fate.domain.User;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.query.OQuery;
+import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
+import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 @Controller
 public class WelcomeController {
 
+    @Autowired
+    OObjectDatabaseTx db;
     @Value("${application.message:Hello World}")
     private String message = "Hello World";
 
+    @RequestMapping("/user/create")
+    public String createUser(Map<String, Object> model, @RequestParam String userName, @RequestParam String password,
+                             @RequestParam String displayName) {
+        model.put("userCreated", false);
+        ODatabaseRecordThreadLocal.INSTANCE.set(db.getUnderlying());
+        OQuery<User> query = new OSQLSynchQuery<User>("select from user where loginName=?");
+        List<User> duplicateUsers = db.query(query, userName);
+        if (!duplicateUsers.isEmpty()) {
+            model.put("flash", "User already exists");
+        } else {
+            User u = db.newInstance(User.class);
+            u.setDisplayName(displayName);
+            u.setLoginName(userName);
+            u.setPassword(password);
+            model.put("flash", "User created");
+            model.put("userCreated", true);
+            db.save(u);
+        }
+        return "flash";
+    }
+
     @RequestMapping("/")
     public String welcome(Map<String, Object> model) {
-        model.put("time", new Date());
-        model.put("message", this.message);
+//        model.put("time", new Date());
+//        model.put("message", this.message);
+
         return "welcome";
     }
 
